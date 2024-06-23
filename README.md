@@ -1,3 +1,4 @@
+[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/8oH8aWc3)
 # High Dynamic Range Image Reconstruction from Single LDR Image
 
 ## 项目概况
@@ -6,6 +7,8 @@
 |:---:|:---:|:---:|:---:|
 |贡献度|4|4|2|
 |完成任务|论文查找、完成第一阶段代码的修改以及运行和项目报告主要撰写|论文查找、完成第二阶段的代码修改及运行和和第二阶段的项目报告撰写|论文查找、项目ppt制作、项目描述视频的制作|
+
+## [视频](https://www.bilibili.com/video/BV1vC3geCEz8/?spm_id_from=333.999.0.0)
 
 ## 数据集
 **阶段1数据集**
@@ -47,18 +50,18 @@ Jung Hee Kim, Siyeong Lee, Suk-Ju Kang1[<sup>7</sup>]()提出了一个具有可�
 
 **方法1**[<sup>5</sup>]()
 #### 3.1.2 方法
-基本思想是让网络学习从单个输入图像生成多个曝光，然后按照传统的HDR流程从生成的曝光中重建HDR。让我们从我们的相机图像形成流程开始。
-![alt text](https://github.com/h22j11/singleImageHdr/blob/main/hdr/image.png)
+基本思想是让网络学习从单个输入图像生成多个曝光，然后按照传统的HDR流程从生成的曝光中重建HDR。让我们从相机图像形成流程开始。
+![alt text](https://github.com/OUC-CV/final-project-zu/blob/main/hdr/image.png)
 
 我们通常将相机图像处理流程中的图像I建模为一个函数f(X)，它将场景辐照度E在曝光时间∆t内的积分转换过来。光度测量X = E∆t是线性的，基于光传输的物理模型，函数f(X)是在相机内信号处理中发生的所有非线性的组合，例如相机响应函数、裁剪、量化和其他非线性映射。在这个模型中，传感器辐照度E捕获场景的高动态范围信号，图像I代表用于显示的低动态范围（LDR）信号。请注意，我们假设过程中的噪声可以忽略不计。因此，我们决定将其从流程中排除。为了执行HDR重建，我们的目标是反转这个图像形成模型，从图像I中恢复传感器辐照度E，以便$E = f^{-1} (I) /∆t$。这意味着我们必须反转f(X)中捕获的非线性。不幸的是，这是一个具有挑战性的问题，因为f(X)中的一些步骤是不可逆的，例如裁剪，而相机响应函数因相机而异，通常被认为是专有的。为了解决这个问题，我们选择数据驱动的方法，并提出使用CNN来学习流程反转。
 #### 3.1.3 网络构建
-![alt text](https://github.com/h22j11/singleImageHdr/blob/main/hdr/teaser.png)
+![alt text](https://github.com/OUC-CV/final-project-zu/blob/main/hdr/teaser.png)
 ##### 3.1.3.1 HDR Encoding Net (N1)
 
-神经网络中负责将输入的低动态范围图像转换为传感器曝光表示的组件。它采用U-Net架构，具有编码器-解码器结构和跳跃连接，以保持低级特征的细节。N1通过网络的多个卷积层和激活函数提取特征，并通过双曲正切激活函数调整输出，使其成为适合生成不同曝光图像的表示。网络的输出与输入图像相加以进行全局调整，并通过损失函数进行训练，包括HDR表示损失，以确保不同曝光图像的一致性。此外，N1在处理输入图像时可能会应用掩膜来忽略过曝或欠曝区域，从而让网络专注于正确曝光的区域。通过这种方式，N1为生成逼真的多重曝光图像提供了基础，这些图像随后可以用于HDR图像的重建。
+本小节介绍了神经网络中负责将输入的低动态范围图像转换为传感器曝光表示的组件。它采用U-Net架构，具有编码器-解码器结构和跳跃连接，以保持低级特征的细节。N1通过网络的多个卷积层和激活函数提取特征，并通过双曲正切激活函数调整输出，使其成为适合生成不同曝光图像的表示。网络的输出与输入图像相加以进行全局调整，并通过损失函数进行训练，包括HDR表示损失，以确保不同曝光图像的一致性。此外，N1在处理输入图像时可能会应用掩膜来忽略过曝或欠曝区域，从而让网络专注于正确曝光的区域。通过这种方式，N1为生成逼真的多重曝光图像提供了基础，这些图像随后可以用于HDR图像的重建。
 
 ##### 3.1.3.2 Up-Exposure Net (N2) 和 Down-Exposure Net (N3)
-神经网络中用于生成不同曝光水平图像的两个子网络。它们基于U-Net架构，利用编码器-解码器结构和跳跃连接来提取和重组特征，确保生成图像的细节丰富性。这两个网络接收来自HDR Encoding Net (N1)的潜在表示作为输入，并处理这些特征以产生上曝光和下曝光的图像。它们在最后一层使用归一化的双曲正切激活函数来输出在[0, 1]范围内的归一化图像，这个激活函数有助于加快学习过程并优化网络性能。在训练时，N2和N3通过重建损失和感知损失等损失函数来确保生成图像的视觉质量和真实性。此外，推理过程中，N2和N3能够根据所需的曝光水平生成新的图像，这些图像最终与传统HDR重建方法结合，形成高质量的HDR图像。
+本小节神经网络中用于生成不同曝光水平图像的两个子网络。它们基于U-Net架构，利用编码器-解码器结构和跳跃连接来提取和重组特征，确保生成图像的细节丰富性。这两个网络接收来自HDR Encoding Net (N1)的潜在表示作为输入，并处理这些特征以产生上曝光和下曝光的图像。它们在最后一层使用归一化的双曲正切激活函数来输出在[0, 1]范围内的归一化图像，这个激活函数有助于加快学习过程并优化网络性能。在训练时，N2和N3通过重建损失和感知损失等损失函数来确保生成图像的视觉质量和真实性。此外，推理过程中，N2和N3能够根据所需的曝光水平生成新的图像，这些图像最终与传统HDR重建方法结合，形成高质量的HDR图像。
 
 ##### 3.1.3.3 激活函数：
 HDR Encoding Net使用双曲正切（tanh）激活函数，然后与输入图像相加以进行全局调整。
@@ -80,7 +83,7 @@ $$L = λ_hL_h + λ_rL_r + λ_pL_p + λ_tvL_tv$$
 由于多曝光图像在曝光值方面具有不同的过曝和欠曝区域，将曝光转移任务分解为两个路径——从给定的单个图像中，模型分别使用全局网络和局部网络学习全局色调和局部细节。通过分解的图像，细化网络集成全局和局部组件以生成微调图像。
 下图展示了模型中子网络的结构。
 
-![alt text](https://github.com/h22j11/singleImageHdr/blob/main/hdr/image-1.png)
+![alt text](https://github.com/OUC-CV/final-project-zu/blob/main/hdr/image-1.png)
 
 递归上升和递归下降网络包含三个子网络的U-Net结构，用于将曝光转移到具有相对上和下EV的图像：全局、局部和细化网络。全局和局部网络分别构建为5级和4级结构，每个级别有2个卷积层。在每个卷积层上实现了Swish激活，以减轻循环模型中的梯度消失问题。细化网络与全局网络具有相同的结构，除了瓶颈层上的Conv-GRUs。全局和局部网络专注于适应性地响应递归次数，细化网络专注于集成全局和局部组件——目标LDR图像的全局色调和基于梯度的边缘结构。
 递归上升（或递归下降）网络利用相同的权重来转移曝光，即使递归状态与输入的曝光值不同。然而，递归上升和递归下降网络都应该适应性地产生与输入的曝光值相对应的过曝和欠曝图像，因此，使用条件实例归一化来标准化不同曝光值的特征图。归一化将形状为C × H × W的特征图X转换为归一化图Y，使用两个可学习的参数γe和βe，以及目标曝光值e，它们在RC中。归一化图规定为$Y = (\gamma {e}({X - \mu}) + \beta {e})/\sigma$
@@ -114,7 +117,22 @@ $$ln E_i = \frac{\sum_{j=1}^{N} w(Z_{ij}) \cdot (g(Z_{ij}) - \ln t_j)}{\sum_{j=1
 这个过程的结果是一个辐射图𝐸，它表示场景中的真实辐射值。该辐射图具有高动态范围，能够捕捉阴影和高光中的细节。
 
 **方法2**[<sup>7</sup>]()
-#### 3.2.5 损失函数
+
+### 3.2.5 合成方法
+为了合成PartⅠ中生成的多张不同曝光图片，采用可微分HDRI合成方法，即给定不同曝光的LDR图像，估计CRF或逆CRF被建模为最小二乘问题，如下所示：
+$$O = \sum_{i} \sum_{j} [g(Z_{ij}) - \ln E_{i} + EV_{j}]^{2} + \lambda \sum_{z=Z_{min}+1}^{Z_{max}-1} g''(z)^{2}$$
+O 表示目标函数，\( g \) 表示逆 CRF，\( Z_{ij} \) 是第 \( i \) 个像素在第 \( j \) 个曝光值下的像素强度值。
+通过最小化目标函数，我们可以获得将 8 位像素强度值映射到 32 位亮度值的离散 CRF \( g \)。
+通过线性近似技术，将非可微的逆 CRF 转换为可微的形式，使得梯度可以传播到多曝光堆栈的每个像素。
+$ln E{i} = g(\Z{ij}) EV{j}$
+场景亮度通过上述公式重新映射；然而，由于逆CRF具有非可微分函数的形式，使用线性近似技术将逆CRF转换为可微分的线性形式。
+假设逆CRF为$ g=[p{0}, p{1} ... p{n}] $，其中N表示多曝光图像的最大强度值。定义线性化函数的导数如下：
+![alt text](https://github.com/OUC-CV/final-project-zu/blob/main/hdr/image-3.png)
+### 另一种单生多的方法
+如下图，给定单个 LDR 图像，目标是生成具有不同曝光水平的多曝光堆栈。为此，我们提出了递归上升和递归下降网络，以在多次递归中生成整个堆栈。我们首先使用递归上升网络逐步增加曝光水平，生成过度曝光图像堆栈。然后，我们使用递归下降网络逐步减少曝光水平，生成不足曝光图像堆栈。通过这种递归过程，我们能够生成整个多曝光堆栈，而无需显式训练每个曝光水平的生成。
+![figure](https://github.com/OUC-CV/final-project-zu/blob/main/hdr/image-1.png)
+
+#### 3.2.6 损失函数
 $$ L = L_{HDR} + \lambda {exp}(L_{exp}) $$
 其中，
 $L_{HDR}$
@@ -126,21 +144,21 @@ $L_{HDR}$
 
 通过最小化上述损失函数，能够联合优化曝光传递和 HDR 图像合成，生成高质量的 HDR 图像。
 
-#### 3.2.6 Module
+#### 3.2.7 Module
 下图展示了我们对逆CRF进行分段线性化的方法。
-![alt text](image-2.png)
+![alt text](https://github.com/OUC-CV/final-project-zu/blob/main/hdr/image-2.png)
 使用Grossberg和Nayar的方法采样像素，根据CRF具有随强度值单调递增的非线性曲线形状的先验假设，将函数线性化为分段线性形式。我们使用分段线性形式重新计算函数值与前一个值之间的差异，如上述公式所示。简单的线性化方法使得梯度可以通过链式法则传播到多曝光堆栈的每个像素。来自亮度值损失的梯度流向每个图像的像素强度值，这通过上述公式对生成的多曝光堆栈施加了相关值的约束。该框架使网络能够同时完成多曝光堆栈生成任务和HDR合成任务，以重建高质量的HDR图像的最优目标。
 
-#### 3.2.7 Train
+#### 3.2.8 Train
 由于训练资源不足，我们于此部分使用预训练好的[权重](https://pan.baidu.com/s/12tKInozQK5dRRoKQ_H39Pw?pwd=tqhr)
 
 
 ## 4.实验结果
 
-![alt text](https://github.com/h22j11/singleImageHdr/blob/main/hdr/output.jpg)
-![alt text](https://github.com/h22j11/singleImageHdr/blob/main/hdr/pred_tone_map.png)
-![alt text](https://github.com/h22j11/singleImageHdr/blob/main/hdr/gt_tone_map-1.png)
-![alt text](https://github.com/h22j11/singleImageHdr/blob/main/hdr/raw.jpg)
+![alt text](https://github.com/OUC-CV/final-project-zu/blob/main/hdr/output.jpg)
+![alt text](https://github.com/OUC-CV/final-project-zu/blob/main/hdr/pred_tone_map.png)
+![alt text](https://github.com/OUC-CV/final-project-zu/blob/main/hdr/gt_tone_map-1.png)
+![alt text](https://github.com/OUC-CV/final-project-zu/blob/main/hdr/raw.jpg)
 
 <center>fig.1. 从左到右分别是A：方法1+方法1 B：方法1+方法2 C：方法2+方法2 D：原图</center>
 
