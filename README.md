@@ -48,11 +48,11 @@ Jung Hee Kim, Siyeong Lee, Suk-Ju Kang1[<sup>7</sup>]()提出了一个具有可�
 **方法1**[<sup>5</sup>]()
 #### 3.1.2 方法
 基本思想是让网络学习从单个输入图像生成多个曝光，然后按照传统的HDR流程从生成的曝光中重建HDR。让我们从我们的相机图像形成流程开始。
-![alt text](image.png)
+![alt text](https://github.com/h22j11/singleImageHdr/blob/main/hdr/image.png)
 
 我们通常将相机图像处理流程中的图像I建模为一个函数f(X)，它将场景辐照度E在曝光时间∆t内的积分转换过来。光度测量X = E∆t是线性的，基于光传输的物理模型，函数f(X)是在相机内信号处理中发生的所有非线性的组合，例如相机响应函数、裁剪、量化和其他非线性映射。在这个模型中，传感器辐照度E捕获场景的高动态范围信号，图像I代表用于显示的低动态范围（LDR）信号。请注意，我们假设过程中的噪声可以忽略不计。因此，我们决定将其从流程中排除。为了执行HDR重建，我们的目标是反转这个图像形成模型，从图像I中恢复传感器辐照度E，以便$E = f^{-1} (I) /∆t$。这意味着我们必须反转f(X)中捕获的非线性。不幸的是，这是一个具有挑战性的问题，因为f(X)中的一些步骤是不可逆的，例如裁剪，而相机响应函数因相机而异，通常被认为是专有的。为了解决这个问题，我们选择数据驱动的方法，并提出使用CNN来学习流程反转。
 #### 3.1.3 网络构建
-![alt text](teaser.png)
+![alt text](https://github.com/h22j11/singleImageHdr/blob/main/hdr/teaser.png)
 ##### 3.1.3.1 HDR Encoding Net (N1)
 
 神经网络中负责将输入的低动态范围图像转换为传感器曝光表示的组件。它采用U-Net架构，具有编码器-解码器结构和跳跃连接，以保持低级特征的细节。N1通过网络的多个卷积层和激活函数提取特征，并通过双曲正切激活函数调整输出，使其成为适合生成不同曝光图像的表示。网络的输出与输入图像相加以进行全局调整，并通过损失函数进行训练，包括HDR表示损失，以确保不同曝光图像的一致性。此外，N1在处理输入图像时可能会应用掩膜来忽略过曝或欠曝区域，从而让网络专注于正确曝光的区域。通过这种方式，N1为生成逼真的多重曝光图像提供了基础，这些图像随后可以用于HDR图像的重建。
@@ -80,7 +80,7 @@ $$L = λ_hL_h + λ_rL_r + λ_pL_p + λ_tvL_tv$$
 由于多曝光图像在曝光值方面具有不同的过曝和欠曝区域，将曝光转移任务分解为两个路径——从给定的单个图像中，模型分别使用全局网络和局部网络学习全局色调和局部细节。通过分解的图像，细化网络集成全局和局部组件以生成微调图像。
 下图展示了模型中子网络的结构。
 
-![alt text](image-1.png)
+![alt text](https://github.com/h22j11/singleImageHdr/blob/main/hdr/image-1.png)
 
 递归上升和递归下降网络包含三个子网络的U-Net结构，用于将曝光转移到具有相对上和下EV的图像：全局、局部和细化网络。全局和局部网络分别构建为5级和4级结构，每个级别有2个卷积层。在每个卷积层上实现了Swish激活，以减轻循环模型中的梯度消失问题。细化网络与全局网络具有相同的结构，除了瓶颈层上的Conv-GRUs。全局和局部网络专注于适应性地响应递归次数，细化网络专注于集成全局和局部组件——目标LDR图像的全局色调和基于梯度的边缘结构。
 递归上升（或递归下降）网络利用相同的权重来转移曝光，即使递归状态与输入的曝光值不同。然而，递归上升和递归下降网络都应该适应性地产生与输入的曝光值相对应的过曝和欠曝图像，因此，使用条件实例归一化来标准化不同曝光值的特征图。归一化将形状为C × H × W的特征图X转换为归一化图Y，使用两个可学习的参数γe和βe，以及目标曝光值e，它们在RC中。归一化图规定为$Y = (\gamma {e}({X - \mu}) + \beta {e})/\sigma$
@@ -137,10 +137,10 @@ $L_{HDR}$
 
 ## 4.实验结果
 
-![alt text](output.jpg)
-![alt text](pred_tone_map.png)
-![alt text](gt_tone_map-1.png)
-![alt text](raw.jpg)
+![alt text](https://github.com/h22j11/singleImageHdr/blob/main/hdr/output.jpg)
+![alt text](https://github.com/h22j11/singleImageHdr/blob/main/hdr/pred_tone_map.png)
+![alt text](https://github.com/h22j11/singleImageHdr/blob/main/hdr/gt_tone_map-1.png)
+![alt text](https://github.com/h22j11/singleImageHdr/blob/main/hdr/raw.jpg)
 
 <center>fig.1. 从左到右分别是A：方法1+方法1 B：方法1+方法2 C：方法2+方法2 D：原图</center>
 
